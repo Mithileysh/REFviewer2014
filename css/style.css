@@ -1,0 +1,22 @@
+body {
+  margin: 1em;
+}
+
+button.danger {
+  color: white;
+  background-color: #006d2c;
+  border: #006d2c;
+}
+
+button {
+  margin-left: 1em;
+  color: white;
+  border: #006d2c;
+  background-color: #006d2c; 
+}
+
+div.options {
+  display: flex;
+  align-items: baseline;
+  margin-top: 1em;
+}

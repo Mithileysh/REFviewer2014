@@ -1,0 +1,121 @@
+const FILLS = ['#006d2c', '#31a354', '#74c476', '#bae4b3', '#edf8e9'];
+const LEGEND = ['4*', '3*', '2*', '1*', 'u/c'];
+const BAR_WIDTH = 800;
+const BAR_HEIGHT = 8;
+const BAR_PAD = 1;
+
+let pct = d3.format('.0%'); // % formatter for the tip
+
+let chart = d3_rs_bars.html('refviewer')
+ .width(BAR_WIDTH)
+ .fill(FILLS)
+ .legend(LEGEND)
+ .orientation('left')
+ .legendOrientation('top')
+ .displayHtml((d, i) => d.l + ', ' + LEGEND[i] + ', ' + (d.v[i] > 0 && d.v[i] < 1 ? pct(d.v[i]) : d.v[i]))
+ .inset({
+   left: 180,
+   right: 0,
+   top: 16,
+   bottom: 0
+ });
+
+function draw(data, animate) {
+ chart.barSize(BAR_HEIGHT);
+ chart.height(data.length * (BAR_HEIGHT + BAR_PAD) + chart.margin() + chart.inset().top + chart.inset().bottom + 40);
+
+ let elm = d3.select('#elm').datum(data);
+ if (animate === true) {
+   elm = elm.transition();
+ }
+ elm.call(chart); // updating is a case of re-calling the chart
+}
+
+// helper to make the buttons exclusive
+function makeOptions(ops, cb) {
+ ops.forEach(function(n, i) {
+   let node = d3.select(n);
+
+   if (i === 0) {
+     node.attr('class', 'danger');
+   }
+
+   node.on('click', function() {
+     let isSet = node.classed('danger');
+     if (isSet) return;
+
+     isSet = !isSet;
+     node.attr('class', isSet ? 'danger' : '');
+
+     ops.forEach(function(p, j) {
+       if (j !== i) {
+         d3.select(ops[j]).attr('class', '');
+       }
+     });
+
+     d3.event.stopPropagation();
+     cb(i);
+   });
+ });
+}
+
+// massage the data into presentable structures
+d3.tsv("https://raw.githubusercontent.com/redsift/d3-rs-bars/master/examples/institutions.txt", function(raw) {
+ let lookup = {};
+ // create lookups table of display values
+ raw.forEach(d => lookup[d['Institution name']] = d['Display']);
+
+  // from: https://www.staff.city.ac.uk/~jwo/refviewer/data/RAE2008In2014Format.txt
+ d3.tsv("https://raw.githubusercontent.com/redsift/d3-rs-bars/master/examples/RAE2008In2014Format.txt", function(raw) {
+   let all = raw.map(d => ({
+     l: lookup[d['Institution name']],
+     v: [parseInt(d['4*']), parseInt(d['3*']), parseInt(d['2*']), parseInt(d['1*']), parseInt(d['unclassified'])]
+   }));
+   
+   // use the nest function to group
+   let grouped = d3.nest()
+     .key(d => d.l)
+     .rollup(v => v.reduce(function(p, e) {
+       for (let i = 0; i < 5; ++i) {
+         p[i] = p[i] + e.v[i]
+       };
+       return p;
+     }, [0, 0, 0, 0, 0]))
+     .entries(all)
+     .map(d => ({
+       l: d.key,
+       v: d.value,
+       t: d3.sum(d.value)
+     }));
+
+   let normal = grouped.map(e => ({
+     l: e.l,
+     v: e.v.map(d => d / e.t)
+   }));
+
+   let staff = 0;
+   let sort = 0;
+
+   function update(animate) {
+     let data;
+     if (staff === 1) {
+       data = grouped.slice();
+     } else {
+       data = normal.slice();
+     }
+     if (sort === 1) {
+       data = data.sort((a, b) => a.v[0] < b.v[0] ? 1 : a.v[0] > b.v[0] ? -1 : 0);
+     } else if (sort === 2) {
+       data = data.sort((a, b) => a.v[0] + a.v[1] < b.v[0] + b.v[1] ? 1 : a.v[0] + a.v[1] > b.v[0] + b.v[1] ? -1 : 0);
+     }
+
+     draw(data, animate);
+   }
+   
+   // draw initial state
+   update(false);
+
+   makeOptions(['#staff-pct', '#staff-count'], (i) => (staff = i, update(true)));
+   makeOptions(['#order-inst', '#order-4', '#order-43'], (i) => (sort = i, update(true)));
+ });
+});
