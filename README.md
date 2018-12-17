@@ -1,4 +1,4 @@
-# Refviewer-2014
+# Refviewer 2014
 
 Using D3, we [re-implemented some of the excellent REFViewer](https://www.staff.city.ac.uk/~jwo/refviewer/) built by Jo Wood of the giCentre at City, University of London.
 
